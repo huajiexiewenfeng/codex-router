@@ -1,0 +1,64 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {spawn} from 'node:child_process';
+import {createHash} from 'node:crypto';
+import {mkdtemp,mkdir,writeFile,rm,readFile} from 'node:fs/promises';
+import {join} from 'node:path';
+import {tmpdir} from 'node:os';
+import {fileURLToPath} from 'node:url';
+import {once} from 'node:events';
+import {setTimeout as delay} from 'node:timers/promises';
+import {initializeDesktopData} from '../src/desktop-bootstrap.mjs';
+import {createDesktopConfigBridge} from '../src/desktop-config-bridge.mjs';
+import {routerStatus,stopRouter} from '../src/router-service.mjs';
+import {planDesktopProvider,applyDesktopProvider} from '../src/desktop-provider-install.mjs';
+import {createCredentialReader} from '../src/router-credentials.mjs';
+const api=await import('../src/desktop-codex-launch.mjs').catch(()=>({}));
+test('launcher injects existing DPAPI ingress only into new process and fails closed',async t=>{
+ assert.equal(typeof api.launchDesktopCodex,'function');
+ const root=await mkdtemp(join(tmpdir(),'desktop-codex-launch-')),home=join(root,'codex');await mkdir(home);
+ const {host}=await initializeDesktopData(join(root,'data'));
+ t.after(async()=>{
+  if(routerStatus(host.routerConfigPath).state==='running')stopRouter(host.routerConfigPath);
+  for(let i=0;i<100&&routerStatus(host.routerConfigPath).lockPresent;i++)await delay(50);
+  assert.equal(routerStatus(host.routerConfigPath).lockPresent,false);
+  await rm(root,{recursive:true,force:true});
+ });
+ const input={routerConfigPath:host.routerConfigPath,codexHome:home,desktopExecutable:process.execPath};
+ const bridge=await createDesktopConfigBridge({...host,allowServiceControl:true});
+ let spawnCount=0;const denySpawn=()=>{spawnCount++;throw Error('must not spawn');};
+ await assert.rejects(api.launchDesktopCodex(input,{isCodexRunning:async()=>false,spawnProcess:denySpawn}),/DCL_ROUTER_UNAVAILABLE/);
+ assert.equal((await bridge.dispatch({operation:'router-start'})).ok,true);
+ const port=routerStatus(host.routerConfigPath).port,configPath=join(home,'config.toml');await writeFile(configPath,'');
+ await assert.rejects(api.launchDesktopCodex(input,{isCodexRunning:async()=>false,spawnProcess:denySpawn}),/DCL_PROVIDER_REQUIRED/);
+ await applyDesktopProvider(configPath,await planDesktopProvider(configPath,port));
+ await assert.rejects(api.launchDesktopCodex(input,{isCodexRunning:async()=>true,spawnProcess:denySpawn}),/DCL_CODEX_RUNNING/);
+ await assert.rejects(api.launchDesktopCodex(input,{isCodexRunning:async()=>{throw Error('secret');},spawnProcess:denySpawn}),/^Error: DCL_PROCESS_CHECK_FAILED$/);
+ let checks=0;
+ await assert.rejects(api.launchDesktopCodex(input,{isCodexRunning:async()=>++checks===2,spawnProcess:denySpawn}),/DCL_CODEX_RUNNING/);
+ assert.equal(spawnCount,0);
+ const parentValue=process.env.CODEX_ROUTER_DESKTOP_INGRESS,configBefore=await readFile(configPath,'utf8');
+ const credentialConfig=JSON.parse(await readFile(join(root,'data','credentials.json'),'utf8'));
+ const credentialSha256=createHash('sha256').update(createCredentialReader(credentialConfig).read('desktop-unconfigured')).digest('hex');
+ let completion,output='',observedArgs,spawnedChild;
+ const spawnFixture=(exe,args,options)=>{
+  observedArgs=args;assert.equal(options.shell,false);assert.equal(options.windowsHide,true);
+  const child=spawn(exe,[fileURLToPath(new URL('./fixtures/desktop-ingress-child.mjs',import.meta.url)),...args],{...options,detached:false,stdio:['ignore','pipe','pipe']});
+  spawnedChild=child;child.stdout.on('data',c=>output+=c);completion=once(child,'close');return child;
+ };
+ const result=await api.launchDesktopCodex(input,{isCodexRunning:async()=>false,spawnProcess:spawnFixture});
+ spawnedChild.ref(); // The fixture is awaited; the real desktop is intentionally detached.
+ await completion;assert.deepEqual(result,{status:'spawned',nativeVerified:false});
+ assert.deepEqual(JSON.parse(output),{validIngress:true,credentialSha256,home,args:[]});assert.deepEqual(observedArgs,[]);
+ assert.equal(process.env.CODEX_ROUTER_DESKTOP_INGRESS,parentValue);assert.equal(await readFile(configPath,'utf8'),configBefore);
+ await assert.rejects(api.launchDesktopCodex(input,{isCodexRunning:async()=>false,spawnProcess:()=>{throw Error('secret');}}),/^Error: DCL_SPAWN_FAILED$/);
+ checks=0;
+ await assert.rejects(api.launchDesktopCodex(input,{isCodexRunning:async()=>{
+  if(++checks===2)await writeFile(configPath,configBefore+'\n# external edit\n');return false;
+ },spawnProcess:denySpawn}),/DCL_CONFIG_CHANGED/);
+ await writeFile(configPath,configBefore);
+ const mapping=JSON.parse(await readFile(join(root,'data','credentials.json'),'utf8'));
+ await writeFile(mapping.credentials[0].filePath,'broken');
+ await assert.rejects(api.launchDesktopCodex(input,{isCodexRunning:async()=>false,spawnProcess:denySpawn}),/DCL_CREDENTIAL_UNAVAILABLE/);
+ assert.equal(spawnCount,0);
+});

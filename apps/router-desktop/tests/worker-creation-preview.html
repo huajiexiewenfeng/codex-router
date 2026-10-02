@@ -1,0 +1,14 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Worker 创建 · 离线预览</title></head><body>
+<p role="status">离线示例：不会创建真实 Worker、调用模型或保存凭据。</p><div id="root"></div>
+<script>
+window.isTauri=true;
+const operationId='00000000-0000-4000-8000-000000000001';let job=null;
+window.__TAURI_INTERNALS__={invoke:async(command,{request})=>{
+ if(command!=='desktop_request')return {ok:false,code:'FIXTURE_ONLY'};
+ if(request.operation==='read')return {ok:true,revision:'fixture',generation:1,workerCreation:true,routingMode:'single-active-gateway',activeProviderId:'sample',workers:[],serviceControl:false,providers:[{id:'sample',displayName:'示例网关',responsesUrl:'https://example.invalid/v1',workers:[]}],models:[{modelId:'sample-sol',providerId:'sample',selectionId:'gpt-6-sol_self',upstreamModel:'gpt-6-sol',displayName:'gpt-6-sol_self',enabled:true,readiness:'pending'}]};
+ if(request.operation==='worker-prepare'){job={operationId,status:'prepared'};return {ok:true,...job};}
+ if(request.operation==='worker-start'&&request.confirmed&&request.operationId===operationId){job={operationId,status:'creation-in-progress'};return {ok:true,...job};}
+ if(request.operation==='worker-status'&&request.operationId===operationId){if(job?.status==='creation-in-progress')job={operationId,status:'needs-reconciliation'};return {ok:true,...job};}
+ return {ok:false,code:'FIXTURE_ONLY'};
+}};
+</script><script type="module" src="/src/main.jsx"></script></body></html>

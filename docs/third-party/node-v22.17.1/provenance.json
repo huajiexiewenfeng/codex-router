@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "version": "v22.17.1",
+  "platform": "win-x64",
+  "binaryUrl": "https://nodejs.org/dist/v22.17.1/win-x64/node.exe",
+  "checksumsUrl": "https://nodejs.org/dist/v22.17.1/SHASUMS256.txt",
+  "licenseUrl": "https://raw.githubusercontent.com/nodejs/node/v22.17.1/LICENSE",
+  "binarySha256": "0f1098a455c7058daaaccd660d3a71dfed1cc0ffe8bea826170a7807d36fcef2",
+  "checksumsSha256": "889373f5f4026b32857a212c82f8ef935ec9e2659d5465c0f60373c9d26bd76c",
+  "licenseSha256": "1ae62e2015784ba438db7b04ebd33f3c4ff3efdb824c111c4ececd99945fd52d",
+  "verification": "HTTPS official checksum match; release signature not verified",
+  "retrievedOn": "2026-09-26"
+}

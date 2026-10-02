@@ -1,0 +1,33 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtemp,readFile,writeFile} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {initializeBudget} from '../src/router-budget.mjs';
+import * as api from '../src/router-registry.mjs';
+const thread='019c7a40-1234-7123-8123-123456789abc';
+test('registry starts empty and explicitly binds one immutable budget per task',async()=>{
+  assert.equal(typeof api.initializeRouterRegistry,'function');
+  const dir=await mkdtemp(join(tmpdir(),'router-registry-')),path=join(dir,'registry.json'),budget=join(dir,'budget.jsonl');
+  api.initializeRouterRegistry(path);
+  assert.throws(()=>api.initializeRouterRegistry(path),/ROUTER_REGISTRY_EXISTS/);
+  initializeBudget(budget,{threadId:thread,maxRequests:2,usedRequests:0,expiresAt:Date.now()+60_000});
+  const first=api.registerRouterBudget(path,budget);
+  assert.equal(first.bindings.length,1);assert.equal(first.bindings[0].threadId,thread);
+  assert.deepEqual(api.registerRouterBudget(path,budget),first);
+  const other=join(dir,'other.jsonl');
+  initializeBudget(other,{threadId:thread,maxRequests:2,usedRequests:0,expiresAt:Date.now()+60_000});
+  assert.throws(()=>api.registerRouterBudget(path,other),/ROUTER_BINDING_EXISTS/);
+  assert.deepEqual(api.readRouterRegistry(path),first);
+});
+test('registration fails closed on registry corruption and occupied mutation lock',async()=>{
+  assert.equal(typeof api.initializeRouterRegistry,'function');
+  const dir=await mkdtemp(join(tmpdir(),'router-registry-')),path=join(dir,'registry.json'),budget=join(dir,'budget.jsonl');
+  api.initializeRouterRegistry(path);
+  initializeBudget(budget,{threadId:thread,maxRequests:1,usedRequests:0,expiresAt:Date.now()+60_000});
+  await writeFile(path+'.mutation.lock','occupied');
+  await assert.rejects(async()=>api.registerRouterBudget(path,budget),/ROUTER_REGISTRY_LOCKED/);
+  await writeFile(path,'{"secret":"do-not-print"}');
+  assert.throws(()=>api.readRouterRegistry(path),/^Error: ROUTER_REGISTRY_INVALID$/);
+  assert.match(await readFile(path,'utf8'),/do-not-print/);
+});

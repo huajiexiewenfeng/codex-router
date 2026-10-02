@@ -1,0 +1,26 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtemp,mkdir,writeFile,readFile,rm} from 'node:fs/promises';
+import {join} from 'node:path';
+import {tmpdir} from 'node:os';
+import {initializeDesktopData} from '../src/desktop-bootstrap.mjs';
+import {prepareDesktopEndpoint} from '../src/desktop-endpoint.mjs';
+import {createDesktopConfigBridge} from '../src/desktop-config-bridge.mjs';
+test('private setup receipt binds discovered target and never accepts renderer paths',async t=>{
+ const root=await mkdtemp(join(tmpdir(),'codex-setup-'));t.after(()=>rm(root,{recursive:true,force:true}));
+ const {host}=await initializeDesktopData(join(root,'data'));await prepareDesktopEndpoint(host.routerConfigPath);
+ const home=join(root,'home');await mkdir(home);const config=join(home,'config.toml');await writeFile(config,'model="gpt-6-sol"\n');
+ let launches=0,target={codexHome:home,desktopExecutable:process.execPath};
+ const codexIntegration={discover:async()=>target,launch:async input=>{assert.equal(input.codexHome,home);launches++;return {status:'spawned',nativeVerified:false};}};
+ const bridge=await createDesktopConfigBridge({...host,allowServiceControl:true,codexIntegration});
+ const receipt=await bridge.dispatch({operation:'codex-prepare'});assert.equal(receipt.ok,true);assert.equal(receipt.status,'ready');
+ assert.equal(await readFile(config,'utf8'),'model="gpt-6-sol"\n');
+ assert.equal((await bridge.dispatch({operation:'codex-apply',receiptId:receipt.receiptId,path:config})).ok,false);
+ const fresh=await bridge.dispatch({operation:'codex-prepare'});
+ assert.equal((await bridge.dispatch({operation:'codex-apply',receiptId:fresh.receiptId})).status,'installed');
+ assert.equal((await bridge.dispatch({operation:'codex-launch',receiptId:fresh.receiptId})).nativeVerified,false);assert.equal(launches,1);
+ const changed=await bridge.dispatch({operation:'codex-prepare'});target={...target,desktopExecutable:join(root,'another.exe')};
+ assert.equal((await bridge.dispatch({operation:'codex-launch',receiptId:changed.receiptId})).code,'DESKTOP_CODEX_STALE');assert.equal(launches,1);
+ const legacy=await createDesktopConfigBridge({...host,codexIntegration});
+ assert.equal((await legacy.dispatch({operation:'codex-prepare'})).code,'DESKTOP_CODEX_DISABLED');
+});

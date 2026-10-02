@@ -1,0 +1,22 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>维护与恢复 · 离线测试</title></head><body>
+<p role="status">离线测试夹具：所有操作仅改变页面内存，不连接 Router、不写配置、不发送模型请求。</p><div id="root"></div>
+<script>
+window.isTauri=true;window.fixtureCalls=[];let state='running';
+window.__TAURI_INTERNALS__={invoke:async(command,{request})=>{
+ if(command!=='desktop_request')return {ok:false,code:'FIXTURE_ONLY'};
+ window.fixtureCalls.push(request.operation);
+ if(request.operation==='read')return {ok:true,revision:'fixture',generation:1,workerCreation:false,routingMode:'single-active-gateway',activeProviderId:null,workers:[],serviceControl:true,providers:[],models:[]};
+ if(request.operation==='router-stop')state='stopped';
+ if(request.operation==='router-start')state='running';
+ if(['router-status','router-stop','router-start'].includes(request.operation))return {ok:true,state,canStop:state==='running',checkedAt:Date.now(),scope:'local-heartbeat-only'};
+ if(request.operation==='official-models-prepare')return {ok:true,receiptId:'fixture-official',addedModels:['gpt-6.1-sol']};
+ if(request.operation==='official-models-sync'){
+  if(state!=='stopped')return {ok:false,code:'OM_STOP_REQUIRED'};
+  if(request.receiptId!=='fixture-official'||!request.confirmed)return {ok:false,code:'OM_CONFIRM'};
+  return {ok:true,status:'saved',requiresServiceStart:true,catalog:{status:'updated',officialCatalog:{status:'cache-bundled-merged'}}};
+ }
+ if(request.operation==='router-recovery-prepare')return {ok:true,token:'fixture-recovery',pid:45678,lockCount:3,state:'recoverable'};
+ if(request.operation==='router-recovery-confirm'&&request.token==='fixture-recovery'&&request.confirmed){state='stopped';return {ok:true,recoveredLocks:3,backupPath:'离线夹具备份（未创建文件）'};}
+ return {ok:false,code:'FIXTURE_ONLY'};
+}};
+</script><script type="module" src="/src/main.jsx"></script></body></html>

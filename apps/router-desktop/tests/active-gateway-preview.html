@@ -1,0 +1,24 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>当前网关 · 离线界面测试</title></head><body>
+<p role="status">离线测试夹具：不连接真实 Router、不保存 Key、不发送模型请求。</p><div id="root"></div>
+<script>
+window.isTauri=true;
+const fixture={ok:true,revision:'fixture-1',generation:1,routingMode:'single-active-gateway',activeProviderId:'a',workers:[],serviceControl:false,providers:[{id:'a',displayName:'公司网关 A',responsesUrl:'https://a.example/v1/responses',workers:[]},{id:'b',displayName:'备用网关 B',responsesUrl:'https://b.example/v1/responses',workers:[]}],models:['a','b'].map(id=>({modelId:id+'-sol',providerId:id,upstreamModel:'gpt-6-sol',selectionId:'gpt-6-sol_self',displayName:'gpt-6-sol_self',enabled:true,readiness:'pending'}))};
+fixture.serviceControl=true;
+let proxy={ok:true,revision:'proxy-1',proxyUrl:'http://127.0.0.1:7897'},state='running';
+window.__TAURI_INTERNALS__={invoke:async(command,{request})=>{
+ if(command!=='desktop_request')return {ok:false,code:'FIXTURE_ONLY'};
+ if(request.operation==='read')return structuredClone(fixture);
+ if(request.operation==='official-proxy-read')return structuredClone(proxy);
+ if(request.operation==='router-stop')state='stopped';
+ if(request.operation==='router-start')state='running';
+ if(['router-status','router-stop','router-start'].includes(request.operation))return {ok:true,state,canStop:state==='running',checkedAt:Date.now(),scope:'local-heartbeat-only'};
+ if(request.operation==='official-proxy-save'){
+  if(state==='running')return {ok:false,code:'OP_STOP_REQUIRED'};
+  if(!request.confirmed||request.revision!==proxy.revision)return {ok:false,code:'OP_STALE'};
+  proxy={...proxy,proxyUrl:request.proxyUrl,revision:proxy.revision+'-next'};return {ok:true,status:'saved'};
+ }
+ if(request.operation==='catalog-sync'&&request.confirmed)return {ok:true,catalog:{status:'updated',startupReloadRequired:true,nativeVerified:false}};
+ if(request.operation==='gateway-activate'&&request.confirmed&&request.revision===fixture.revision&&['a','b'].includes(request.providerId)){fixture.activeProviderId=request.providerId;fixture.generation++;fixture.revision='fixture-'+fixture.generation;return {ok:true};}
+ return {ok:false,code:'FIXTURE_NO_SIDE_EFFECTS'};
+}};
+</script><script type="module" src="/src/main.jsx"></script></body></html>

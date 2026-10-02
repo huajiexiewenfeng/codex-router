@@ -1,0 +1,17 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Codex Router Preview",
+  "version": "0.1.3",
+  "identifier": "local.codex-router.preview",
+  "build": {
+    "beforeDevCommand": "npm run dev -- --host 127.0.0.1 --port 1420 --strictPort",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist/client"
+  },
+  "app": {
+    "windows": [{"title":"Codex Router · 交互预览","width":1200,"height":840,"minWidth":780,"minHeight":620}],
+    "security": {"csp":"default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src ipc: http://ipc.localhost; base-uri 'none'; form-action 'none'"}
+  },
+  "bundle": {"active":false}
+}

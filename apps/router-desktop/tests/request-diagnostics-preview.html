@@ -1,0 +1,14 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>最近请求诊断 · 离线预览</title></head><body>
+<p role="status">离线示例，不连接真实服务。点击右上角状态检查查看诊断。</p><div id="root"></div>
+<script>
+window.isTauri=true;
+const fixture={ok:true,revision:'fixture-1',generation:1,routingMode:'single-active-gateway',activeProviderId:null,workers:[],serviceControl:false,providers:[],models:[]};
+window.__TAURI_INTERNALS__={invoke:async(command,{request})=>{
+ if(command!=='desktop_request')return {ok:false,code:'FIXTURE_ONLY'};
+ if(request.operation==='read')return structuredClone(fixture);
+ if(request.operation==='router-status')return {ok:true,state:'running',checkedAt:Date.now(),requests:{available:true,scope:'current-run-tail',workers:[
+ {threadId:'00000000-0000-4000-8000-000000000001',state:'running',active:true,model:'gpt-6-sol_self',recovered:false,failure:{code:'transport_failed_before_headers',networkCode:'ECONNRESET',elapsedMs:70784,timestamp:1790564663930,model:'gpt-6-astra_self'}},
+ {threadId:'00000000-0000-4000-8000-000000000002',state:'running',active:false,recovered:true,model:'gpt-6-sol_self',failure:{code:'stream_idle_timeout',timestamp:1790564663930,model:'gpt-6-sol_self'}}]}};
+ return {ok:false,code:'FIXTURE_NO_SIDE_EFFECTS'};
+}};
+</script><script type="module" src="/src/main.jsx"></script></body></html>
