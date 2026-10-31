@@ -10,14 +10,14 @@
 
 Windows 构建机需已配置 Rust 的 MSVC 工具链、C++ 构建工具、Windows SDK、Node/npm。运行桌面窗口需 WebView2；安装候选在缺少 WebView2 时使用下载引导程序，因此不是完整离线包。
 
-当前 runtime 打包器仅接受已归档的 **Node v22.17.1 win-x64**。从 `docs/third-party/node-v22.17.1/provenance.json` 中列出的官方地址获取二进制，并核对该文件记录的 SHA256。这是现有开发基线，不代表对其最新安全状态的认可，正式发行前仍需复审。
+当前 runtime 打包器仅接受已归档的 **Node v22.23.3 win-x64**。从 `docs/third-party/node-v22.23.3/provenance.json` 中列出的官方地址获取二进制，并核对该文件记录的 SHA256。这是候选包开发基线，不代表完整安全审查通过，正式发行前仍需复审；不会自动更新已安装的 Router。
 
 在 PowerShell 中，将下面三个变量替换为本机真实路径。staging 必须不存在、父目录存在，且与源码在同一个盘符。
 
 ```powershell
 $routerStage = 'D:/build/codex-router-stage'
-$routerNode = 'D:/tools/node-v22.17.1/node.exe'
-$routerNodeHash = '0f1098a455c7058daaaccd660d3a71dfed1cc0ffe8bea826170a7807d36fcef2'
+$routerNode = 'D:/tools/node-v22.23.3/node.exe'
+$routerNodeHash = '9c9245166b4a8e182e0b797da9c20136117ff24368eaff1fec8343a123c8db0e'
 node scripts/prepare-desktop-installer.mjs $routerStage $routerNode $routerNodeHash
 Push-Location apps/router-desktop
 node node_modules/@tauri-apps/cli/tauri.js build --debug --bundles nsis --config "$routerStage/tauri.installer.json"
@@ -35,6 +35,8 @@ runtime 与用户数据分离，数据默认位于 `%LOCALAPPDATA%/CodexRouterPr
 候选安装目录包含 `runtime/skills/codex-router/SKILL.md`、`runtime/src/router-skill-cli.mjs` 和内置 Node。按 [Skill 使用说明](router-skill-setup.md) 手动启用，不自动改全局 Codex 配置。
 
 ## 发行前仍需完成
+
+执行顺序和干净 Windows 验收矩阵见 [Windows 预览安装版准备](windows-preview-readiness.md)。[2026-10-08 依赖检查](third-party/review-2026-10-08.md) 是升级前快照，[后续候选更新](third-party/dependency-update-2026-10-08.md) 记录了依赖修复和回归；仍不应将开发安装包直接发布。
 
 - 完整依赖许可证与安全审查、可复现构建和发行签名。
 - 干净 Windows（无开发工具）安装、升级与卸载验证。

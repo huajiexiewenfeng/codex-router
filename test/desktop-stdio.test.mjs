@@ -36,10 +36,10 @@ test('data-root stdio controls only its own isolated service and survives host r
  if(process.platform!=='win32'){t.skip('Windows packaged-runtime integration');return;}
  const packageNode=process.env.CODEX_ROUTER_TEST_NODE??process.execPath;
  const nodeSha256=createHash('sha256').update(await readFile(packageNode)).digest('hex');
- const provenance=JSON.parse(await readFile(new URL('../docs/third-party/node-v22.17.1/provenance.json',import.meta.url),'utf8'));
+ const provenance=JSON.parse(await readFile(new URL('../docs/third-party/node-v22.23.3/provenance.json',import.meta.url),'utf8'));
  if(nodeSha256!==provenance.binarySha256){
   if(process.env.CODEX_ROUTER_TEST_NODE)assert.fail('CODEX_ROUTER_TEST_NODE must match archived Node checksum');
-  t.skip('Set CODEX_ROUTER_TEST_NODE to verified Node v22.17.1 win-x64 for packaging integration');return;
+  t.skip('Set CODEX_ROUTER_TEST_NODE to verified Node v22.23.3 win-x64 for packaging integration');return;
  }
  const {routerStatus,stopRouter}=await import('../src/router-service.mjs');
  const {setTimeout:delay}=await import('node:timers/promises');

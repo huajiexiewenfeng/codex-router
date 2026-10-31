@@ -52,7 +52,7 @@ npm --prefix apps/router-desktop run build
 
 [桌面与安装包构建](docs/building.md) · [Skill 使用](docs/router-skill-setup.md) · [安全说明](SECURITY.md)
 
-打包集成测试需要归档的 Node v22.17.1 win-x64；使用其他 Node 时会明确跳过该项，可通过 `CODEX_ROUTER_TEST_NODE` 指定已校验的二进制。原生 Codex 集成按测试中的显式环境开关启用；默认测试不发送真实模型请求。
+打包集成测试需要归档的 Node v22.23.3 win-x64；使用其他 Node 时会明确跳过该项，可通过 `CODEX_ROUTER_TEST_NODE` 指定已校验的二进制。原生 Codex 集成按测试中的显式环境开关启用；默认测试不发送真实模型请求。
 
 ## 项目结构
 

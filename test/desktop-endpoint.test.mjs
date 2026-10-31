@@ -13,7 +13,7 @@ async function stopped(path){for(let i=0;i<100;i++){const s=routerStatus(path);i
 async function fixture(t){const dir=await mkdtemp(join(tmpdir(),'desktop-endpoint-'));const {host}=await initializeDesktopData(join(dir,'data'));const path=host.routerConfigPath;const config=JSON.parse(await readFile(path));t.after(async()=>{if(routerStatus(path).state==='running'){stopRouter(path);await stopped(path);}await rm(dir,{recursive:true,force:true});});return {path,config};}
 test('preparation persists one loopback port and repeated preparation preserves bytes',async t=>{
  const prepare=await api(),f=await fixture(t),result=await prepare(f.path);
- assert.equal(result.changed,true);assert.ok(result.port>0);assert.equal(result.baseUrl,`http://127.0.0.1:${result.port}/v1`);
+ assert.equal(result.changed,true);assert.ok(result.port>=29080&&result.port<=29179);assert.equal(result.baseUrl,`http://127.0.0.1:${result.port}/v1`);
  const bytes=await readFile(f.path,'utf8'),saved=JSON.parse(bytes);
  assert.deepEqual(saved,{...f.config,port:result.port,adapterOptions:{...f.config.adapterOptions,port:result.port}});
  assert.equal((await prepare(f.path)).changed,false);assert.equal(await readFile(f.path,'utf8'),bytes);
@@ -21,6 +21,14 @@ test('preparation persists one loopback port and repeated preparation preserves 
  assert.equal((await startRouter(f.path)).port,result.port);stopRouter(f.path);await stopped(f.path);
  assert.equal((await startRouter(f.path)).port,result.port);
  await assert.rejects(prepare(f.path),/DE_SERVICE_ACTIVE/);
+});
+test('initial preparation skips an occupied preferred port without using ephemeral ports',async t=>{
+ const prepare=await api(),f=await fixture(t),server=createServer();
+ await new Promise((yes,no)=>{server.once('error',no);server.listen(29080,'127.0.0.1',yes);});
+ t.after(()=>new Promise(r=>server.close(r)));
+ const result=await prepare(f.path);
+ assert.ok(result.port>29080&&result.port<=29179);
+ assert.equal(JSON.parse(await readFile(f.path)).port,result.port);
 });
 test('occupied fixed port fails startup without changing saved endpoint',async t=>{
  const prepare=await api(),f=await fixture(t),{port}=await prepare(f.path),before=await readFile(f.path,'utf8');
@@ -51,4 +59,18 @@ test('stale host identity is rejected inside preparation lock before any edit',a
  const bytes=JSON.stringify({...f.config,adapterOptions:{...f.config.adapterOptions,officialModels:['gpt-6-sol']}});
  await writeFile(f.path,bytes);await assert.rejects(prepare(f.path,{expectedConfigIdentity:identity}),/DE_CONFIG_CHANGED/);
  assert.equal(await readFile(f.path,'utf8'),bytes);
+});
+test('exhausted preferred range refuses preparation without changing config or leaving locks',async t=>{
+ const prepare=await api(),f=await fixture(t),before=await readFile(f.path,'utf8'),servers=[];
+ t.after(()=>Promise.all(servers.map(server=>new Promise(r=>server.close(r)))));
+ for(let port=29080;port<=29179;port++){
+  const server=createServer();
+  try{await new Promise((yes,no)=>{server.once('error',no);server.listen(port,'127.0.0.1',yes);});servers.push(server);}
+  catch(e){if(!['EADDRINUSE','EACCES'].includes(e.code))throw e;}
+ }
+ await assert.rejects(prepare(f.path),/DE_PORT_UNAVAILABLE/);
+ assert.equal(await readFile(f.path,'utf8'),before);
+ for(const lock of [f.path+'.desktop-control.lock',f.config.registryPath+'.mutation.lock',f.config.adapterOptions.bindingsPath+'.lock']){
+  await assert.rejects(readFile(lock),{code:'ENOENT'});
+ }
 });

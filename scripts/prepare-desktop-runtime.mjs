@@ -11,7 +11,7 @@ async function regular(path){const info=await lstat(path);if(!info.isFile()||inf
 export async function prepareDesktopRuntime({destination,nodePath,nodeSha256}){
  if(process.platform!=='win32'||!isAbsolute(destination)||!isAbsolute(nodePath)||!/^[a-f0-9]{64}$/.test(nodeSha256))fail('DR_INPUT');
  const node=await regular(nodePath);if(hash(node)!==nodeSha256)fail('DR_NODE_HASH');
- const noticeRoot=join(source,'docs/third-party/node-v22.17.1');
+ const noticeRoot=join(source,'docs/third-party/node-v22.23.3');
  const provenanceBytes=await regular(join(noticeRoot,'provenance.json')),provenance=JSON.parse(provenanceBytes);
  const nodeLicense=await regular(join(noticeRoot,'LICENSE')),checksums=await regular(join(noticeRoot,'SHASUMS256.txt'));
  if(nodeSha256!==provenance.binarySha256)fail('DR_NODE_UNREGISTERED');

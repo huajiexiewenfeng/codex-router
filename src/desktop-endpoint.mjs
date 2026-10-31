@@ -10,11 +10,17 @@ const fail=code=>{throw Error(code);};
 async function regular(path){const s=await lstat(path);if(!s.isFile()||s.isSymbolicLink())fail('DE_CONFIG_INVALID');return readFile(path,'utf8');}
 function requireStopped(path){const s=routerStatus(path);if(!['not_started','stopped'].includes(s.state)||s.lockPresent||s.active||s.stopRequested)fail('DE_SERVICE_ACTIVE');}
 async function selectPort(){
- const server=createServer();
- try{
-  await new Promise((yes,no)=>{server.once('error',no);server.listen(0,'127.0.0.1',yes);});
-  return server.address().port;
- }finally{if(server.listening)await new Promise((yes,no)=>server.close(e=>e?no(e):yes()));}
+ // Choose once below the default Windows ephemeral range (49152-65535).
+ // A saved endpoint is never silently changed: existing Workers depend on it.
+ for(let port=29080;port<=29179;port++){
+  const server=createServer();
+  try{
+   await new Promise((yes,no)=>{server.once('error',no);server.listen({port,host:'127.0.0.1',exclusive:true},yes);});
+   return port;
+  }catch(e){if(!['EADDRINUSE','EACCES'].includes(e.code))throw e;}
+  finally{if(server.listening)await new Promise((yes,no)=>server.close(e=>e?no(e):yes()));}
+ }
+ fail('DE_PORT_UNAVAILABLE');
 }
 
 // Trusted host API only. Does not start a service, register Workers, or edit Codex.

@@ -37,7 +37,7 @@ npm --prefix apps/router-desktop run build
 
 The browser preview is UI-only. Native Worker and model-menu integration is sensitive to Codex versions. Other operating systems, clean-machine installation, release signing, complete dependency review and automatic updates are not yet production-validated. See [security notes](SECURITY.md) and [Skill setup](docs/router-skill-setup.md).
 
-The packaged-runtime integration test requires the archived Node v22.17.1 win-x64 binary; set `CODEX_ROUTER_TEST_NODE` to its verified absolute path when using another Node version. Otherwise that test is explicitly skipped. Installed-Codex integration is opt-in; default tests do not send real model requests.
+The packaged-runtime integration test requires the archived Node v22.23.3 win-x64 binary; set `CODEX_ROUTER_TEST_NODE` to its verified absolute path when using another Node version. Otherwise that test is explicitly skipped. Installed-Codex integration is opt-in; default tests do not send real model requests.
 
 Extracted from [codex-team-runtime](https://github.com/huajiexiewenfeng/codex-team-runtime), retaining only Router dependencies. Team admission and task orchestration remain separate concerns.
 

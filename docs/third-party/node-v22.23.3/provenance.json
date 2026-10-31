@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "version": "v22.23.3",
+  "platform": "win-x64",
+  "binaryUrl": "https://nodejs.org/dist/v22.23.3/win-x64/node.exe",
+  "checksumsUrl": "https://nodejs.org/dist/v22.23.3/SHASUMS256.txt",
+  "licenseUrl": "https://raw.githubusercontent.com/nodejs/node/v22.23.3/LICENSE",
+  "binarySha256": "9c9245166b4a8e182e0b797da9c20136117ff24368eaff1fec8343a123c8db0e",
+  "checksumsSha256": "4fe99a2ba9d552a6f51c13ed68fb11104cfa5df601aec616be689253a8139e7a",
+  "licenseSha256": "c738ae413cf561f174e34f6961f8ca458aae2369a73640dda6234c629b98bcc4",
+  "verification": "HTTPS official checksum match; Windows Authenticode Valid (OpenJS Foundation) observed on 2026-10-08; signed release manifest not verified",
+  "retrievedOn": "2026-10-08"
+}
